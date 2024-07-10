@@ -1,0 +1,89 @@
+// server.js
+// where your node app starts
+
+// init project
+const express = require("express");
+const bodyParser = require("body-parser");
+const app = express();
+const fs = require("fs");
+app.use(bodyParser.urlencoded({ extended: true }));
+app.use(bodyParser.json());
+
+// we've started you off with Express,
+// but feel free to use whatever libs or frameworks you'd like through `package.json`.
+
+// http://expressjs.com/en/starter/static-files.html
+app.use(express.static("public"));
+
+// init sqlite db
+const dbFile = "./.data/sqlite.db";
+const exists = fs.existsSync(dbFile);
+
+// if ./.data/sqlite.db does not exist, create it, otherwise print records to console
+const Discord = require("v11-discord.js");
+const bot = new Discord.Client();
+const moment = require("moment");
+const ms = require("ms");
+require("moment-duration-format");
+const duration = moment
+  .duration(bot.uptime)
+  .format(" D [дней], H [часов], m [мин], s [сек]");
+const { findTimeZone, getZonedTime } = require("timezone-support");
+const russia = findTimeZone("Europe/Moscow");
+var https = require("https");
+
+// helper function that prevents html/css/script malice
+const cleanseString = function (string) {
+  return string.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+};
+
+// listen for requests :)
+var listener = app.listen(process.env.PORT, () => {
+  console.log(process.env.IP + ":" + process.env.PORT);
+});
+const puppeteer = require("puppeteer");
+app.get("/", function (request, response) {
+  response.sendFile(__dirname + "/views/index.html");
+});
+setInterval(async function () {
+  https.get("https://screener.glitch.me/");
+
+  const browser = await puppeteer.launch({
+    args: ["--no-sandbox"],
+  });
+  const nativeDate = new Date();
+  const russiatime = getZonedTime(nativeDate, russia);
+  let hours = russiatime.hours;
+  let minutes = russiatime.minutes;
+  if (hours == "00" && minutes == "00") {
+    const page = await browser.newPage();
+    await page.wait;
+    await page.goto(
+      "https://www.g2g.com/offer/Yura?service_id=lgc_service_1&brand_id=lgc_game_20657&region_id=dfced32f-2f0a-4df5-a218-1e068cfadffa&fa=lgc_20657_server%3Algc_20657_server_26446"
+    );
+    await page.waitForSelector("#pre_checkout_sls_offer"); // дожидаемся загрузки селектора
+    await page
+      .screenshot({ path: "./img.png" })
+      .then((img) =>
+        bot.channels.get("983273146176114688").send({ files: [img] })
+      );
+    const element = await page.$("#pre_checkout_sls_offer"); // объявляем переменную с ElementHandle
+    await element
+      .screenshot({ path: "./img.png" })
+      .then((img) =>
+        bot.channels.get("983273146176114688").send({ files: [img] })
+      );
+    await browser.close();
+  } else {
+    const page = await browser.newPage();
+    await page.wait;
+    await page.goto("https://screener.glitch.me/");
+    await browser.close();
+  }
+  require("child_process").execSync("git prune");
+  require("child_process").execSync("git gc");
+  require("child_process").execSync("refresh");
+}, 1000 * 60);
+
+// #pre_checkout_sls_offer > div:nth-child(1) > div > div:nth-child(2)
+//bot.login("NjA5NjIzMTM5NDIwMzQwMjI2.Gy23ti.ax_v9esSW7sNK_AdqoiK_5TlrA3F4IQCB6A_po")
